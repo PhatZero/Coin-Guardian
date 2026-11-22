@@ -44,6 +44,12 @@ class ManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unrecognized version"):
             build.validate_manifest(self.addon)
 
+    def test_repository_placeholder_excluded(self):
+        (self.addon / ".gitkeep").write_text("placeholder", encoding="utf-8")
+        version, files = build.validate_manifest(self.addon)
+        self.assertEqual(version, "1.0b1")
+        self.assertNotIn(Path(".gitkeep"), files)
+
     def test_package_layout(self):
         with TemporaryDirectory() as directory:
             output = build.build(self.addon, Path(directory))
