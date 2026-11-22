@@ -64,3 +64,11 @@ Coin Guardian adds a gold-coin button with a small shield on the edge of the rou
 - **Commands:** `/cg minimap hide`, `/cg minimap show`, `/cg minimap reset`.
 
 No Github release or CurseForge publishing is performed for local alpha builds.
+
+## 0.1.2-alpha: embedded in the Auction House Sell tab
+
+Coin Guardian no longer creates a separate floating panel. Visit an auctioneer and open the normal **Sell** tab. The gold-colored Coin Guardian footer lives **inside the right-hand side** of that tab, beneath the shortened native listings area. The original Post button and pricing controls remain unchanged. Switching to Buy or closing the Auction House hides the footer and restores the original listing area. The 50% profit-target slider is also in this embedded section.
+
+- Minimap left-click toggles the footer while on Sell. Minimap right-click restores the footer/settings there.
+- Away from the Auction House, the minimap button and `/cg` show a chat hint instead of opening a new window.
+- This is still **local QA only**. No tag, release, or CurseForge upload has been made.

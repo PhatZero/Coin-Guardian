@@ -1,116 +1,137 @@
--- Coin Guardian: compact native-feeling, read-only panel for Forever's sell tab.
+-- Coin Guardian: profit footer EMBEDDED in the WoW Forever Auction House Sell tab.
+-- Does not create top-level, movable, or out-of-AH windows; never touches posting APIs.
 local _, CG = ...
 CG.UI = {}
 local UI = CG.UI
 local Pricing = CG.Pricing
+local unpack = unpack
 local gold = { 1.00, 0.82, 0.40 }
 local pale = { 0.96, 0.92, 0.82 }
 local green = { 0.35, 0.92, 0.52 }
 local red = { 1.00, 0.32, 0.31 }
 local amber = { 1.00, 0.77, 0.28 }
 
-local function Label(parent, text, template, x, y, width, align)
-    local field = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
-    field:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
-    field:SetSize(width, 22)
-    field:SetJustifyH(align or "LEFT")
-    field:SetText(text or "")
-    return field
+local function label(parent, text, x, y, width, align, template)
+    local f = parent:CreateFontString(nil, "OVERLAY", template or "GameFontHighlightSmall")
+    f:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    f:SetSize(width, 20)
+    f:SetJustifyH(align or "LEFT")
+    f:SetText(text or "")
+    return f
 end
 
-local function ColorText(label, color)
-    label:SetTextColor(color[1], color[2], color[3])
+local function color(f, shade)
+    f:SetTextColor(shade[1], shade[2], shade[3])
 end
 
-local function Background(frame, left, top, width, height, color)
-    local texture = frame:CreateTexture(nil, "BACKGROUND")
-    texture:SetPoint("TOPLEFT", frame, "TOPLEFT", left, top)
-    texture:SetSize(width, height)
-    texture:SetColorTexture(unpack(color))
-    return texture
+local function background(parent, x, y, width, height, shade)
+    local t = parent:CreateTexture(nil, "BACKGROUND")
+    t:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    t:SetSize(width, height)
+    t:SetColorTexture(unpack(shade))
+    return t
 end
 
-local function LayoutPanel(panel, atHouse)
-    panel:ClearAllPoints()
+local function canShow()
     local house = _G.AuctionHouseFrame
-    if atHouse and house then
-        local houseRight = house.GetRight and house:GetRight()
-        local uiRight = UIParent.GetRight and UIParent:GetRight()
-        if houseRight and uiRight and houseRight + 348 > uiRight then
-            panel:SetPoint("TOPRIGHT", house, "TOPLEFT", -10, -10)
-        else
-            panel:SetPoint("TOPLEFT", house, "TOPRIGHT", 10, -10)
-        end
-    else
-        panel:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    if not house or not house.IsShown or not house:IsShown() then return nil end
+    local item = house.ItemSellFrame
+    local commodity = house.CommoditiesSellFrame
+    if (item and item.IsShown and item:IsShown())
+        or (commodity and commodity.IsShown and commodity:IsShown()) then
+        return house
     end
+    return nil
+end
+UI.CanShow = canShow
+
+-- Make room INSIDE the right half of the Sell tab by reducing the native
+-- results list height. Preserve every original anchor so hiding Coin Guardian
+-- restores Blizzard's layout exactly.
+local function saveListAnchors(list)
+    local points = {}
+    if list.GetNumPoints and list.GetPoint then
+        for i = 1, list:GetNumPoints() do
+            points[#points + 1] = { list:GetPoint(i) }
+        end
+    end
+    return points
 end
 
-local function MakePanel()
-    if UI.panel then return UI.panel end
-    local panel = CreateFrame("Frame", "CoinGuardianPanel", UIParent)
-    panel:SetSize(340, 473)
-    panel:SetFrameStrata("DIALOG")
-    panel:SetClampedToScreen(true)
-    panel:EnableMouse(true)
-    Background(panel, 0, 0, 340, 473, { 0.04, 0.035, 0.025, 0.96 })
-    Background(panel, 2, -2, 336, 2, { 0.65, 0.43, 0.16, 1 })
-    Background(panel, 2, -469, 336, 2, { 0.40, 0.29, 0.12, 1 })
-    Background(panel, 2, -2, 2, 469, { 0.40, 0.29, 0.12, 1 })
-    Background(panel, 336, -2, 2, 469, { 0.40, 0.29, 0.12, 1 })
-    Background(panel, 15, -133, 310, 1, { 0.37, 0.29, 0.15, 0.8 })
-    Background(panel, 15, -330, 310, 1, { 0.37, 0.29, 0.15, 0.8 })
+local function restoreList()
+    if not UI.dockedList then return end
+    local list = UI.dockedList
+    if list.ClearAllPoints and list.SetPoint then
+        list:ClearAllPoints()
+        for _, point in ipairs(UI.originalAnchors or {}) do
+            list:SetPoint(unpack(point))
+        end
+    end
+    if list.MarkDirty then list:MarkDirty() end
+    UI.dockedList = nil
+    UI.originalAnchors = nil
+end
 
-    local icon = panel:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(33, 33)
-    icon:SetPoint("TOPLEFT", 16, -15)
-    icon:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
-    local title = Label(panel, "COIN GUARDIAN", "GameFontNormalLarge", 55, -17, 240)
-    ColorText(title, gold)
-    local subtitle = Label(panel, "Protect your gold. Keep the profit.", "GameFontHighlightSmall", 55, -40, 255)
-    ColorText(subtitle, pale)
+local function dock(house)
+    local list = house.ItemSellList
+    local sell = house.ItemSellFrame
+    if not list or not sell or not list.GetNumPoints or not list.GetPoint then
+        return false
+    end
+    if UI.dockedList == list then return true end
+    restoreList()
+    local original = saveListAnchors(list)
+    if #original == 0 then return false end
+    UI.originalAnchors = original
+    UI.dockedList = list
+    list:ClearAllPoints()
+    list:SetPoint("TOPLEFT", sell, "TOPRIGHT", 1, 0)
+    list:SetPoint("RIGHT", house, "RIGHT", -5, 0)
+    -- 180px footer plus an 8px gap, inside the Sell tab's original list area.
+    list:SetPoint("BOTTOMLEFT", sell, "BOTTOMRIGHT", 1, 188)
+    if list.MarkDirty then list:MarkDirty() end
+    return true
+end
 
-    local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 0, 0)
-    close:SetScript("OnClick", function()
-        if CG.db then CG.db.enabled = false end
-        CG.manualOpen = false
-        UI.Refresh(true)
-    end)
+local function makeFooter(house)
+    if UI.panel and UI.house == house then return UI.panel end
+    local panel = CreateFrame("Frame", "CoinGuardianSellFooter", house)
+    panel:SetHeight(180)
+    panel:SetPoint("BOTTOMLEFT", house.ItemSellFrame, "BOTTOMRIGHT", 1, 0)
+    panel:SetPoint("RIGHT", house, "RIGHT", -5, 0)
+    background(panel, 0, 0, 405, 180, { 0.05, 0.05, 0.04, 0.94 })
+    background(panel, 1, -1, 403, 2, { 0.68, 0.48, 0.18, 1 })
 
-    UI.itemLabel = Label(panel, "Choose an item in the Sell tab", "GameFontNormal", 18, -76, 305)
-    UI.itemLabel:SetWordWrap(false)
-    Background(panel, 15, -100, 310, 30, { 0.12, 0.11, 0.08, 1 })
-    UI.status = Label(panel, "Waiting for a listing", "GameFontNormal", 25, -106, 295)
-    ColorText(UI.status, amber)
+    local header = label(panel, "COIN GUARDIAN  |  SELL PROFIT", 12, -7, 335, "LEFT", "GameFontNormal")
+    color(header, gold)
+    UI.status = label(panel, "Choose an item and asking price", 12, -27, 389, "LEFT", "GameFontHighlightSmall")
+    color(UI.status, amber)
 
     UI.rows = {}
     local rows = {
-        { "Vendor equivalent", "vendor" },
-        { "AH asking price", "gross" },
-        { "Auction House cut (5%)", "cut" },
-        { "You'll receive after cut", "net" },
-        { "Profit over vendor", "profit" },
-        { "Minimum AH price", "minimum" },
-        { "Refundable deposit*", "deposit" },
+        { "Vendor value", "vendor", 12, -52, 75, 90 },
+        { "AH asking", "gross", 211, -52, 68, 112 },
+        { "AH fee (5%)", "cut", 12, -76, 75, 90 },
+        { "After AH cut", "net", 211, -76, 75, 105 },
+        { "Profit", "profit", 12, -100, 75, 90 },
+        { "Min. AH price", "minimum", 211, -100, 82, 98 },
+        { "Deposit*", "deposit", 12, -124, 75, 90 },
     }
-    for index, row in ipairs(rows) do
-        local y = -148 - (index - 1) * 26
-        local key = row[2]
-        local label = Label(panel, row[1], "GameFontHighlightSmall", 18, y, 200)
-        local value = Label(panel, "--", "GameFontNormal", 212, y, 112, "RIGHT")
-        UI.rows[key] = value
-        if key == "net" or key == "profit" then ColorText(value, gold) end
+    for _, row in ipairs(rows) do
+        label(panel, row[1], row[3], row[4], row[5])
+        local x = row[3] == 12 and 98 or 295
+        local val = label(panel, "--", x, row[4], row[6], "RIGHT", "GameFontNormalSmall")
+        UI.rows[row[2]] = val
     end
 
-    UI.sliderTitle = Label(panel, "MINIMUM PROFIT OVER VENDOR", "GameFontNormal", 18, -346, 252)
-    ColorText(UI.sliderTitle, gold)
-    UI.sliderValue = Label(panel, "50%", "GameFontNormalLarge", 268, -345, 54, "RIGHT")
-    ColorText(UI.sliderValue, gold)
+    local marginText = label(panel, "Profit target", 211, -124, 90, "LEFT", "GameFontHighlightSmall")
+    color(marginText, pale)
+    UI.marginValue = label(panel, "50%", 315, -124, 78, "RIGHT", "GameFontNormalSmall")
+    color(UI.marginValue, gold)
 
-    local slider = CreateFrame("Slider", "CoinGuardianMarginSlider", panel, "OptionsSliderTemplate")
-    slider:SetPoint("TOPLEFT", panel, "TOPLEFT", 31, -387)
-    slider:SetSize(277, 18)
+    local slider = CreateFrame("Slider", "CoinGuardianInlineMarginSlider", panel, "OptionsSliderTemplate")
+    slider:SetPoint("TOPLEFT", panel, "TOPLEFT", 19, -155)
+    slider:SetSize(274, 14)
     slider:SetMinMaxValues(0, 200)
     slider:SetValueStep(5)
     if slider.SetObeyStepOnDrag then slider:SetObeyStepOnDrag(true) end
@@ -119,76 +140,85 @@ local function MakePanel()
     if low then low:SetText("0%") end
     if high then high:SetText("200%") end
     slider:SetScript("OnValueChanged", function(_, value)
-        if not CG.db or UI.settingSlider then return end
+        if UI.updatingSlider or not CG.db then return end
         local percent = Pricing.NormalizeMargin(value)
-        if value ~= percent then
-            UI.settingSlider = true
+        if percent ~= value then
+            UI.updatingSlider = true
             slider:SetValue(percent)
-            UI.settingSlider = false
+            UI.updatingSlider = false
         end
+        UI.marginValue:SetText(percent .. "%")
         if percent ~= CG.GetMargin() then CG.SetMargin(percent) end
-        UI.sliderValue:SetText(percent .. "%")
     end)
     UI.slider = slider
 
     local reset = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    reset:SetSize(94, 22)
-    reset:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -18, -422)
+    reset:SetSize(86, 21)
+    reset:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -16, -150)
     reset:SetText("Reset 50%")
     reset:SetScript("OnClick", function() CG.SetMargin(50) end)
     UI.reset = reset
-    local foot = Label(panel, "*Lost if the auction expires. Profit assumes a sale.", "GameFontHighlightSmall", 18, -447, 300)
-    ColorText(foot, { 0.72, 0.67, 0.54 })
+
+    -- The deposit is refunded on a successful sale; there is no second deduction.
+    if panel.SetScript then
+        panel:SetScript("OnEnter", function(self)
+            if not GameTooltip then return end
+            GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+            GameTooltip:SetText("Coin Guardian", 1, 0.82, 0.4)
+            GameTooltip:AddLine("Profit is compared with vendor selling, after the 5% AH cut.", 0.9, 0.9, 0.85, true)
+            GameTooltip:AddLine("*Deposit is usually refunded on sale, lost on expiry.", 0.9, 0.9, 0.85, true)
+            GameTooltip:Show()
+        end)
+        panel:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end
 
     panel:Hide()
-    UI.panel = panel
+    UI.panel, UI.house = panel, house
     return panel
 end
 
-local function SetStatus(text, color)
-    UI.status:SetText(text)
-    ColorText(UI.status, color)
-end
-
-local function Values(result)
-    local values = UI.rows
-    local function set(key, amount, prefix)
-        values[key]:SetText(amount ~= nil and ((prefix or "") .. Pricing.CoinText(amount)) or "--")
+local function fill(result)
+    local fields = UI.rows
+    local function put(key, value, prefix)
+        fields[key]:SetText(value ~= nil and ((prefix or "") .. Pricing.CoinText(value)) or "--")
     end
-    set("vendor", result and result.vendor)
-    set("gross", result and result.gross)
-    set("cut", result and result.cut, result and "-" or "")
-    set("net", result and result.net)
-    set("profit", result and result.profit, result and result.profit and result.profit > 0 and "+" or "")
-    set("minimum", result and result.minimumGross)
-    set("deposit", result and result.deposit)
-    ColorText(values.profit, result and result.profit and (result.profit < 0 and red or green) or pale)
+    put("vendor", result and result.vendor)
+    put("gross", result and result.gross)
+    put("cut", result and result.cut, result and "-" or "")
+    put("net", result and result.net)
+    put("profit", result and result.profit, result and result.profit and result.profit > 0 and "+" or "")
+    put("minimum", result and result.minimumGross)
+    put("deposit", result and result.deposit)
+    color(fields.profit, result and result.profit and (result.profit < 0 and red or green) or pale)
 end
 
 function UI.Refresh(force)
     if not CG.db then return end
-    local house = _G.AuctionHouseFrame
-    local atHouse = house and house.IsShown and house:IsShown() and house.IsListingAuctions and house:IsListingAuctions()
-    local shouldShow = (CG.db.enabled and atHouse) or CG.manualOpen
-    if not shouldShow then
+    local house = canShow()
+    if not house or not CG.db.enabled then
         if UI.panel then UI.panel:Hide() end
+        restoreList()
         UI.lastFingerprint = nil
         return
     end
-    MakePanel()
-    if not UI.panel:IsShown() then
-        LayoutPanel(UI.panel, atHouse)
-        UI.panel:Show()
+
+    local panel = makeFooter(house)
+    if not dock(house) then
+        -- Avoid drawing over auctions if Blizzard's list structure changed.
+        panel:Hide()
+        UI.lastFingerprint = nil
+        return
+    end
+    if not panel:IsShown() then
+        panel:Show()
         force = true
-    elseif force then
-        LayoutPanel(UI.panel, atHouse)
     end
     local target = CG.GetMargin()
     if force or UI.slider:GetValue() ~= target then
-        UI.settingSlider = true
+        UI.updatingSlider = true
         UI.slider:SetValue(target)
-        UI.settingSlider = false
-        UI.sliderValue:SetText(target .. "%")
+        UI.updatingSlider = false
+        UI.marginValue:SetText(target .. "%")
     end
     local context, state = CG.Auction.GetContext()
     local fingerprint
@@ -201,24 +231,27 @@ function UI.Refresh(force)
     if not force and fingerprint == UI.lastFingerprint then return end
     UI.lastFingerprint = fingerprint
     if not context or context.empty then
-        UI.itemLabel:SetText(atHouse and "Choose an item in the Sell tab" or "Open an auctioneer to evaluate a sale")
-        SetStatus("Waiting for an item and price", amber)
-        Values(nil)
+        UI.status:SetText("Choose an item and asking price")
+        color(UI.status, amber)
+        fill(nil)
         return
     end
-    UI.itemLabel:SetText((context.name or "Selected item") .. "  x" .. tostring(context.quantity or "?") ..
-        (context.isCommodity and " (commodity)" or ""))
     local outcome = Pricing.Evaluate(context.vendorEach, context.quantity, context.priceEach, target, context.deposit)
-    Values(outcome)
+    fill(outcome)
     if outcome.state == "sell" then
-        SetStatus("SELL ON AUCTION HOUSE  |  +" .. string.format("%.1f%%", outcome.profitPercent), green)
+        UI.status:SetText("SELL ON AH  |  +" .. string.format("%.1f%%", outcome.profitPercent))
+        color(UI.status, green)
     elseif outcome.state == "loss" then
-        SetStatus("WARNING: VENDOR PAYS MORE!", red)
+        UI.status:SetText("WARNING: VENDOR PAYS MORE")
+        color(UI.status, red)
     elseif outcome.state == "below_target" then
-        SetStatus("BELOW YOUR " .. target .. "% TARGET", amber)
+        UI.status:SetText("BELOW YOUR " .. target .. "% TARGET")
+        color(UI.status, amber)
     elseif outcome.state == "zero_vendor" then
-        SetStatus("VENDOR PAYS NOTHING  |  CHECK PRICE", amber)
+        UI.status:SetText("NO VENDOR VALUE  |  CHECK PRICE")
+        color(UI.status, amber)
     else
-        SetStatus(outcome.reason or "Price information unavailable", amber)
+        UI.status:SetText(outcome.reason or "Price information unavailable")
+        color(UI.status, amber)
     end
 end
