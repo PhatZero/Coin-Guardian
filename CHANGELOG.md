@@ -8,3 +8,15 @@
 - Documented the intended 5% AH commission, vendor comparison, and adjustable profit target.
 
 No in-game addon has been released.
+
+## 0.1.0-alpha (local QA only)
+
+- Added a WoW Forever 1.60.1 addon with read-only Auction House Sell-tab integration.
+- Supports both commodities and item listings using the modern sell controls.
+- Shows price, 5% cut, net proceeds, vendor comparison, profit, minimum asking price, and deposit.
+- Warns when a vendor pays more, and only recommends AH when the net profit threshold is met.
+- Added a saved 0–200% minimum-profit slider, default 50%, and a reset button.
+- Added slash commands `/cg`, `/cg margin`, `/cg reset`, `/cg show`, `/cg hide`, and `/cg status`.
+- Added Lua mock tests and Python packaging tests.
+
+This is not a public release. In-game QA is still required.
