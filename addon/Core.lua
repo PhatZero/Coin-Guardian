@@ -1,5 +1,5 @@
 local addonName, CG = ...
-CG.version = "0.1.0-alpha"
+CG.version = "0.1.1-alpha"
 CG.defaultMargin = 50
 CG.manualOpen = false
 
@@ -27,6 +27,26 @@ local function OpenUI(force)
     Say(CG.db.enabled and "Profit panel enabled." or "Profit panel hidden. Use /cg show to restore it.")
 end
 
+-- Minimap left-click shares the same behavior as the slash command.
+function CG.TogglePanel()
+    if not CG.db then return end
+    local house = _G.AuctionHouseFrame
+    if house and house.IsShown and house:IsShown() then
+        local isOpen = CG.UI and CG.UI.panel and CG.UI.panel:IsShown()
+        CG.manualOpen = false
+        CG.db.enabled = not isOpen
+    else
+        CG.manualOpen = not CG.manualOpen
+    end
+    if CG.UI then CG.UI.Refresh(true) end
+end
+
+function CG.OpenSettings()
+    if not CG.db then return end
+    CG.manualOpen = true
+    if CG.UI then CG.UI.Refresh(true) end
+end
+
 SLASH_COINGUARDIAN1 = "/cg"
 SLASH_COINGUARDIAN2 = "/coinguardian"
 SlashCmdList["COINGUARDIAN"] = function(message)
@@ -43,16 +63,23 @@ SlashCmdList["COINGUARDIAN"] = function(message)
         else Say("Minimum net profit set to " .. CG.SetMargin(value) .. "% above vendor value.") end
     elseif cmd == "status" then
         Say("Version " .. CG.version .. ", margin " .. CG.GetMargin() .. "%, panel " .. (CG.db and CG.db.enabled and "on" or "off") .. ".")
-    elseif cmd == "" then
-        if _G.AuctionHouseFrame and _G.AuctionHouseFrame:IsShown() then
-            OpenUI()
+    elseif cmd == "minimap" then
+        local choice = string.lower(argument or "")
+        if choice == "hide" or choice == "show" then
+            CG.db.minimapVisible = choice == "show"
+            if CG.Minimap then CG.Minimap.Refresh() end
+            Say("Minimap icon " .. (CG.db.minimapVisible and "shown." or "hidden. Use /cg minimap show to restore."))
+        elseif choice == "reset" then
+            CG.db.minimapAngle = 225
+            if CG.Minimap then CG.Minimap.Reposition() end
+            Say("Minimap icon returned to the default rim position.")
         else
-            CG.manualOpen = not CG.manualOpen
-            if CG.UI then CG.UI.Refresh(true) end
-            Say(CG.manualOpen and "Settings preview opened." or "Settings preview closed.")
+            Say("Usage: /cg minimap show | hide | reset")
         end
+    elseif cmd == "" then
+        CG.TogglePanel()
     else
-        Say("Commands: /cg, /cg show, /cg hide, /cg margin 75, /cg reset, /cg status")
+        Say("Commands: /cg, /cg show, /cg hide, /cg margin 75, /cg reset, /cg minimap show/hide/reset")
     end
 end
 
@@ -66,6 +93,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         CG.db = CoinGuardianDB
         if CG.db.enabled == nil then CG.db.enabled = true end
         CG.db.minimumProfit = CG.Pricing.NormalizeMargin(CG.db.minimumProfit)
+        if CG.Minimap then CG.Minimap.Create() end
         Say("Local QA " .. CG.version .. " loaded. Visit an auctioneer or use /cg.")
     elseif event == "AUCTION_HOUSE_CLOSED" then
         if CG.UI then CG.UI.Refresh(true) end
@@ -82,4 +110,5 @@ eventFrame:SetScript("OnUpdate", function(_, delta)
     if elapsed < 0.25 then return end
     elapsed = 0
     if CG.db and CG.UI then CG.UI.Refresh(false) end
+    if CG.db and CG.Minimap then CG.Minimap.Refresh() end
 end)
