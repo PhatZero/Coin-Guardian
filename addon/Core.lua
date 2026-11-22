@@ -1,5 +1,5 @@
 local addonName, CG = ...
-CG.version = "0.1.1-alpha"
+CG.version = "0.1.2-alpha"
 CG.defaultMargin = 50
 CG.manualOpen = false
 
@@ -27,24 +27,25 @@ local function OpenUI(force)
     Say(CG.db.enabled and "Profit panel enabled." or "Profit panel hidden. Use /cg show to restore it.")
 end
 
--- Minimap left-click shares the same behavior as the slash command.
+-- Coin Guardian lives inside the AH Sell tab; never spawn a separate window.
 function CG.TogglePanel()
     if not CG.db then return end
-    local house = _G.AuctionHouseFrame
-    if house and house.IsShown and house:IsShown() then
-        local isOpen = CG.UI and CG.UI.panel and CG.UI.panel:IsShown()
-        CG.manualOpen = false
-        CG.db.enabled = not isOpen
-    else
-        CG.manualOpen = not CG.manualOpen
+    if not CG.UI or not CG.UI.CanShow() then
+        Say("Open the Auction House Sell tab to use Coin Guardian.")
+        return
     end
-    if CG.UI then CG.UI.Refresh(true) end
+    CG.db.enabled = not CG.db.enabled
+    CG.UI.Refresh(true)
 end
 
 function CG.OpenSettings()
     if not CG.db then return end
-    CG.manualOpen = true
-    if CG.UI then CG.UI.Refresh(true) end
+    if not CG.UI or not CG.UI.CanShow() then
+        Say("Profit settings are built into the Auction House Sell tab.")
+        return
+    end
+    CG.db.enabled = true
+    CG.UI.Refresh(true)
 end
 
 SLASH_COINGUARDIAN1 = "/cg"
@@ -102,7 +103,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 end)
 
--- Small read-only refresh while an AH is visible; does not hook protected actions
+-- Small read-only refresh while the AH is visible; does not hook protected actions
 -- or replace Blizzard callbacks. This also notices loaded-on-demand AH frames.
 local elapsed = 0
 eventFrame:SetScript("OnUpdate", function(_, delta)
