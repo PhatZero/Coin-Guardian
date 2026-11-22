@@ -32,3 +32,14 @@ This is not a public release. In-game QA is still required.
 - Added Lua 5.1 regression tests for minimap positioning, dragging, and persistence.
 
 This build is for local in-game QA only.
+
+## 0.1.2-alpha (local QA only)
+
+- Moved Coin Guardian's profit breakdown into the **existing Auction House Sell tab** instead of a separate floating window.
+- Reserves space in the native results list for a compact footer while preserving the original posting controls.
+- Restores the original Auction House layout when leaving the Sell tab or hiding Coin Guardian.
+- Keeps vendor comparison, the 5% AH fee, net proceeds, profit warning, deposit, and adjustable saved 0–200% target inside the Sell tab.
+- Minimap button and slash commands open or hide the inline section. Outside the AH, they explain where to find it instead of creating a window.
+- Expanded mock QA to test tab transitions, normal and commodity selling, and original list-anchor restoration.
+
+No public GitHub release or CurseForge publication.
