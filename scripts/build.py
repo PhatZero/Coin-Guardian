@@ -54,6 +54,8 @@ def validate_manifest(addon: Path = ADDON):
         if source.is_symlink():
             raise ValueError(f"Symlinks are not allowed in addon package: {source}")
         if source.is_file():
+            if source.name == ".gitkeep":
+                continue  # Repository placeholder, not part of the game addon.
             if source.suffix.lower() not in SUPPORTED:
                 raise ValueError(f"Unsupported addon file: {source}")
             files.append(source.relative_to(addon))
