@@ -43,6 +43,12 @@ jobs:
           mapfile -d '' sources < <(find addon -type f -name '*.lua' -print0)
           (( ${#sources[@]} > 0 )) || { echo 'Missing addon Lua sources' >&2; exit 1; }
           for f in "${sources[@]}"; do luac5.1 -p "$f"; done
+      - name: Run copper math and AH reader mock tests
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          lua5.1 tests/profit_mock.lua
+          lua5.1 tests/auction_mock.lua
+          lua5.1 tests/ui_mock.lua
       - name: Package local preview
         if: steps.detect.outputs.present == 'true'
         run: python3 scripts/build.py

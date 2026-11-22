@@ -1,0 +1,13 @@
+## Interface: 16001
+## Title: |cffffd76aCoin|r |cfffff7e8Guardian|r
+## Notes: Protect your gold. Compare Auction House net proceeds to vendor value before listing.
+## Author: PhatZero
+## Version: 0.1.0-alpha
+## SavedVariables: CoinGuardianDB
+## X-Category: Auction
+## X-Client: WoW Forever 1.60.1
+
+Pricing.lua
+Auction.lua
+UI.lua
+Core.lua

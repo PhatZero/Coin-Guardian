@@ -50,6 +50,17 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(version, "1.0b1")
         self.assertNotIn(Path(".gitkeep"), files)
 
+    def test_local_alpha_version(self):
+        toc = self.addon / "CoinGuardian.toc"
+        toc.write_text(toc.read_text(encoding="utf-8").replace("1.0b1", "0.1.0-alpha"), encoding="utf-8")
+        version, _ = build.validate_manifest(self.addon)
+        self.assertEqual(version, "0.1.0-alpha")
+
+    def test_repository_placeholder_excluded(self):
+        (self.addon / ".gitkeep").write_text("placeholder", encoding="utf-8")
+        _, files = build.validate_manifest(self.addon)
+        self.assertNotIn(Path(".gitkeep"), files)
+
     def test_package_layout(self):
         with TemporaryDirectory() as directory:
             output = build.build(self.addon, Path(directory))

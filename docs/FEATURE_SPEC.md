@@ -55,3 +55,9 @@ The deposit is shown separately. Deposits are generally returned when an auction
 | 1g | 90s | 4s 50c | 85s 50c | -14.5% | 50% | Warning / vendor |
 
 Also test varying quantities, 0-vendor-value items, no price, rounding, UI slider persistence, expiration deposits, and client compatibility.
+
+## First local QA implementation (0.1.0-alpha)
+
+The Forever client is using the **modern** `C_AuctionHouse` API, `AuctionHouseFrame.CommoditiesSellFrame` and `AuctionHouseFrame.ItemSellFrame` (not Classic `GetAuctionSellItemInfo`). The addon uses `GetUnitPrice()` for commodities and the buyout from `GetPrice()` for items, then applies `GetQuantity()` in both cases. The native `GetDepositAmount()` is displayed separately. Item vendor values are read via `C_Item.GetItemInfo`, when cached. If a listing has only a bid and no buyout, the addon asks for a buyout; it will not assume a winning bid amount.
+
+Implemented for local QA: read-only native AH panel, safe price math, 5% deduction, adjustable saved 50% threshold, warning states, and slash commands. Final visual and API behavior must be checked in-game before public release.

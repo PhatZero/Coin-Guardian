@@ -12,7 +12,7 @@ TOC_NAME = "CoinGuardian.toc"
 PACKAGE_NAME = "CoinGuardian"
 INTERFACE = "16001"
 SUPPORTED = {".toc", ".lua", ".xml", ".tga", ".blp", ".ttf", ".otf"}
-VERSION_RE = re.compile(r"(?:[0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+b[1-9][0-9]*)\Z")
+VERSION_RE = re.compile(r"(?:[0-9]+\.[0-9]+\.[0-9]+(?:-alpha)?|[0-9]+\.[0-9]+b[1-9][0-9]*)\Z")
 
 
 def manifest_field(contents: str, name: str) -> str:

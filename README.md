@@ -4,7 +4,7 @@
 
 Coin Guardian is a standalone Auction House decision-support addon being developed for **World of Warcraft: Forever**.
 
-> **Status: repository/bootstrap only.** The in-game addon is not implemented or ready to release. Automated publication is intentionally gated.
+> **Status: local QA build 0.1.0-alpha.** Core features are implemented, but they still require actual WoW Forever in-game acceptance testing. No public release has been made. Automated publication is intentionally gated.
 
 ## Planned features
 
@@ -19,11 +19,11 @@ Coin Guardian is a standalone Auction House decision-support addon being develop
 
 ## Development
 
-This repository is currently **infrastructure only**. Gameplay code will be added under `addon/` after verifying the Forever client APIs. Its manifest will be `addon/CoinGuardian.toc` and must list every loaded Lua/XML file.
+The first local QA implementation reads the modern Forever `AuctionHouseFrame` sell forms without hooking protected post actions. It includes a profit calculator, read-only panel, and persisted margin slider. Its manifest will be `addon/CoinGuardian.toc` and must list every loaded Lua/XML file.
 
 | Path | Purpose |
 | --- | --- |
-| `addon/` | Installable addon source (not yet implemented) |
+| `addon/` | Installable addon source (`Pricing.lua`, `Auction.lua`, `UI.lua`, `Core.lua`) |
 | `docs/FEATURE_SPEC.md` | Rules, calculations, and acceptance criteria |
 | `docs/RELEASE_SETUP.md` | GitHub and CurseForge setup |
 | `scripts/build.py` | Validate and create a clean installable ZIP |
@@ -41,3 +41,14 @@ This repository is currently **infrastructure only**. Gameplay code will be adde
 - A matching `forever-*` tag triggers tested **GitHub release packaging**. CurseForge publishing is a **separate manual workflow** that uploads the already-tested release, and needs a Coin Guardian-specific CurseForge project ID and API token.
 
 **Do not reuse the Food Guardian CurseForge project ID.**
+## Install the local QA ZIP
+
+1. Extract `CoinGuardian-Forever-0.1.0-alpha.zip` into `World of Warcraft/_forever_/Interface/AddOns/`.
+2. Confirm the path is `Interface/AddOns/CoinGuardian/CoinGuardian.toc`.
+3. Fully restart WoW Forever, enable Coin Guardian on the AddOns screen, and visit an Auction House.
+4. Open the Sell tab and select an item. Coin Guardian appears alongside the native sell form and updates when quantity/asking price changes.
+5. Drag the 0%–200% slider (5% increments), then `/reload` to verify settings persist.
+
+The panel only reads the selling form. It never posts auctions or blocks Blizzard's Post button. Use `/cg status`, `/cg show`, `/cg hide`, `/cg margin 75`, `/cg reset`, or `/cg` (panel toggle while at the AH; preview elsewhere).
+
+**Please report:** which sell tab was used (item or commodity), the item's vendor value, stack count, asking price, whether the panel updated, and any Lua/taint errors.
