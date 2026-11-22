@@ -52,3 +52,15 @@ The first local QA implementation reads the modern Forever `AuctionHouseFrame` s
 The panel only reads the selling form. It never posts auctions or blocks Blizzard's Post button. Use `/cg status`, `/cg show`, `/cg hide`, `/cg margin 75`, `/cg reset`, or `/cg` (panel toggle while at the AH; preview elsewhere).
 
 **Please report:** which sell tab was used (item or commodity), the item's vendor value, stack count, asking price, whether the panel updated, and any Lua/taint errors.
+
+## Minimap button (local QA 0.1.1-alpha)
+
+Coin Guardian adds a gold-coin button with a small shield on the edge of the round minimap. It is anchored to the minimap itself, not to the screen, and automatically recalculates its position when the minimap changes size or shape. Dragging the button slides it around the rim, and its angle is saved across logins and `/reload`.
+
+- **Left-click:** Toggle Coin Guardian's panel (including preview mode away from auctioneers).
+- **Right-click:** Open the profit panel/settings from anywhere.
+- **Drag:** Reposition along the minimap edge.
+- **Hover:** Show the addon name, margin setting, and mouse controls.
+- **Commands:** `/cg minimap hide`, `/cg minimap show`, `/cg minimap reset`.
+
+No Github release or CurseForge publishing is performed for local alpha builds.

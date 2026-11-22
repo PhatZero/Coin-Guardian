@@ -61,3 +61,9 @@ Also test varying quantities, 0-vendor-value items, no price, rounding, UI slide
 The Forever client is using the **modern** `C_AuctionHouse` API, `AuctionHouseFrame.CommoditiesSellFrame` and `AuctionHouseFrame.ItemSellFrame` (not Classic `GetAuctionSellItemInfo`). The addon uses `GetUnitPrice()` for commodities and the buyout from `GetPrice()` for items, then applies `GetQuantity()` in both cases. The native `GetDepositAmount()` is displayed separately. Item vendor values are read via `C_Item.GetItemInfo`, when cached. If a listing has only a bid and no buyout, the addon asks for a buyout; it will not assume a winning bid amount.
 
 Implemented for local QA: read-only native AH panel, safe price math, 5% deduction, adjustable saved 50% threshold, warning states, and slash commands. Final visual and API behavior must be checked in-game before public release.
+
+## Minimap navigation enhancement (0.1.1-alpha)
+
+When the addon loads, it creates a 32x32 coin-and-shield button anchored to the minimap center at a radial distance of (minimap radius + 7 UI units). For the standard round minimap, the icon's center straddles the rim rather than drifting inside it. Square maps use a ray-to-edge intersection. Dragging stores an angle in `CoinGuardianDB.minimapAngle`, and a 0.25-second low-cost geometry check updates positions when minimap sizes change.
+
+The button opens the existing profit panel and slider; it does not post auctions or make protected UI changes. `CoinGuardianDB.minimapVisible` controls visibility, with slash commands to show/hide/reset the icon.

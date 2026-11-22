@@ -20,3 +20,15 @@ No in-game addon has been released.
 - Added Lua mock tests and Python packaging tests.
 
 This is not a public release. In-game QA is still required.
+
+## 0.1.1-alpha (local QA only)
+
+- Added a gold coin and shield button on the round minimap's outer rim.
+- Added edge-constrained dragging and saved position across `/reload`.
+- Preserves the ring position during minimap resizes and handles square minimap layouts.
+- Left-click opens or closes Coin Guardian; right-click opens the profit settings.
+- Added a tooltip with the current minimum profit requirement.
+- Added `/cg minimap show`, `hide`, and `reset` commands.
+- Added Lua 5.1 regression tests for minimap positioning, dragging, and persistence.
+
+This build is for local in-game QA only.
