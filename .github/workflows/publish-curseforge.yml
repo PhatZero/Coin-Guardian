@@ -1,0 +1,54 @@
+name: Publish Coin Guardian to CurseForge
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing verified GitHub release tag (e.g. forever-1.0b1)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: coin-guardian-curseforge
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require Coin Guardian CurseForge credentials
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          PROJECT: ${{ vars.CURSEFORGE_PROJECT_ID }}
+        run: |
+          [[ -n "$TOKEN" && "$PROJECT" =~ ^[1-9][0-9]*$ ]] || { echo 'Configure CURSEFORGE_TOKEN secret and CURSEFORGE_PROJECT_ID variable' >&2; exit 1; }
+      - name: Fetch existing tested GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^forever-([0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+b[1-9][0-9]*)$ ]] || { echo 'Invalid release tag' >&2; exit 1; }
+          version="${RELEASE_TAG#forever-}"
+          mkdir -p dist
+          gh release download "$RELEASE_TAG" --pattern "CoinGuardian-Forever-$version.zip" --dir dist
+          unzip -tqq "dist/CoinGuardian-Forever-$version.zip"
+          gh release view "$RELEASE_TAG" --json body --jq .body > release-notes.md
+          [[ -s release-notes.md ]] || { echo 'Release notes required for CurseForge' >&2; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Upload the tested ZIP and Markdown release notes
+        shell: bash
+        env:
+          CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+          CURSEFORGE_PROJECT_ID: ${{ vars.CURSEFORGE_PROJECT_ID }}
+        run: |
+          export CHANGELOG
+          CHANGELOG=$(cat release-notes.md)
+          bash scripts/upload-forever.sh "dist/CoinGuardian-Forever-$VERSION.zip"

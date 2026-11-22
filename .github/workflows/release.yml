@@ -1,0 +1,53 @@
+name: Release Coin Guardian Forever
+
+on:
+  push:
+    tags: ['forever-*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate tag and addon version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^forever-([0-9]+\.[0-9]+\.[0-9]+|[0-9]+\.[0-9]+b[1-9][0-9]*)$ ]] || exit 1
+          test -f addon/CoinGuardian.toc || { echo 'Addon has not been implemented' >&2; exit 1; }
+          version=$(sed -n 's/^## Version: //p' addon/CoinGuardian.toc | tr -d '\r')
+          [[ "$version" == "${TAG#forever-}" ]] || { echo 'Tag version differs from TOC version' >&2; exit 1; }
+      - name: Run packaging tests
+        run: python3 -m unittest discover -s tests -v
+      - name: Check Lua 5.1 syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua5.1
+          mapfile -d '' sources < <(find addon -type f -name '*.lua' -print0)
+          (( ${#sources[@]} > 0 )) || { echo 'No Lua source' >&2; exit 1; }
+          for f in "${sources[@]}"; do luac5.1 -p "$f"; done
+      - name: Create tested installable ZIP
+        run: python3 scripts/build.py
+      - name: Publish tested GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${TAG#forever-}"
+          gh release view "$TAG" >/dev/null 2>&1 && { echo 'Release already exists; refusing overwrite' >&2; exit 1; }
+          flags=()
+          if [[ "$version" == *b* ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" "dist/CoinGuardian-Forever-$version.zip"             --title "Coin Guardian $version (Forever)" --generate-notes "${flags[@]}"

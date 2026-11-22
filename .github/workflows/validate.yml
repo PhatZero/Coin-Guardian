@@ -1,0 +1,54 @@
+name: Validate Coin Guardian
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test release tooling
+        run: python3 -m unittest discover -s tests -v
+      - name: Detect gameplay addon
+        id: detect
+        shell: bash
+        run: |
+          if [[ -f addon/CoinGuardian.toc ]]; then
+            echo 'present=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'present=false' >> "$GITHUB_OUTPUT"
+            echo 'Infrastructure bootstrap only: no in-game addon to package.'
+          fi
+      - name: Install Lua 5.1
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua5.1
+      - name: Validate Lua 5.1 syntax
+        if: steps.detect.outputs.present == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' sources < <(find addon -type f -name '*.lua' -print0)
+          (( ${#sources[@]} > 0 )) || { echo 'Missing addon Lua sources' >&2; exit 1; }
+          for f in "${sources[@]}"; do luac5.1 -p "$f"; done
+      - name: Package local preview
+        if: steps.detect.outputs.present == 'true'
+        run: python3 scripts/build.py
+      - uses: actions/upload-artifact@v4
+        if: steps.detect.outputs.present == 'true'
+        with:
+          name: CoinGuardian-Forever-preview
+          path: dist/CoinGuardian-Forever-*.zip
+          if-no-files-found: error
