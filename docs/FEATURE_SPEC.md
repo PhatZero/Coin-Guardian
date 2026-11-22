@@ -67,3 +67,9 @@ Implemented for local QA: read-only native AH panel, safe price math, 5% deducti
 When the addon loads, it creates a 32x32 coin-and-shield button anchored to the minimap center at a radial distance of (minimap radius + 7 UI units). For the standard round minimap, the icon's center straddles the rim rather than drifting inside it. Square maps use a ray-to-edge intersection. Dragging stores an angle in `CoinGuardianDB.minimapAngle`, and a 0.25-second low-cost geometry check updates positions when minimap sizes change.
 
 The button opens the existing profit panel and slider; it does not post auctions or make protected UI changes. `CoinGuardianDB.minimapVisible` controls visibility, with slash commands to show/hide/reset the icon.
+
+## Integrated AH Sell-tab footer (0.1.2-alpha)
+
+The first standalone floating panel did not meet the intended UX. The revised design creates a 180px footer as a direct child of `AuctionHouseFrame`, anchored to the bottom-right space beside the native Sell form. It saves all original `ItemSellList` anchor points, shortens the results list to make room, then restores those anchors when the footer hides, the player changes tabs, or the Auction House closes. The commodity list follows the resized item list's anchors. The original Blizzard Post button is untouched.
+
+The profit breakdown and slider are never shown in a separate window, including when a player clicks the minimap icon away from an auctioneer. In-game QA should confirm the footer has adequate room at different UI scales and does not obscure the item/commodity search list or buttons.
