@@ -6,6 +6,30 @@ local M = CG.Minimap
 local cos, sin, abs, max, min, pi = math.cos, math.sin, math.abs, math.max, math.min, math.pi
 local DEFAULT_ANGLE = 225
 
+-- EllesmereUI's minimap module collects named button children, takes ownership
+-- of placement (including reparenting to its flyout), and controls visibility.
+-- Do not fight that management. A disabled Ellesmere minimap module leaves us
+-- in standalone mode.
+function M.IsExternallyManaged()
+    local ui = _G.EllesmereUI
+    if type(ui) ~= "table" or type(ui._ModuleNS) ~= "table" then return false end
+    local module = ui._ModuleNS.EllesmereUIMinimap
+    if type(module) ~= "table" then return false end
+    local internals = module._internals
+    local handler = type(internals) == "table" and internals.EBS
+    local settings = type(handler) == "table" and handler.db
+    local profile = type(settings) == "table" and settings.profile
+    local minimapSettings = type(profile) == "table" and profile.minimap
+    if type(minimapSettings) == "table" and minimapSettings.enabled == false then
+        return false
+    end
+    return true
+end
+
+local function isOwnedByOtherFrame()
+    return M.button and M.button.GetParent and M.button:GetParent() ~= Minimap
+end
+
 local function validNumber(value)
     return type(value) == "number" and value == value and value > -math.huge and value < math.huge
 end
@@ -55,7 +79,7 @@ function M.OffsetForAngle(angle, width, height, shape)
 end
 
 function M.Reposition()
-    if not M.button or not CG.db then return end
+    if not M.button or not CG.db or M.IsExternallyManaged() or isOwnedByOtherFrame() then return end
     local width, height, shape = geometry()
     if not width then return end
     local angle = normalizeAngle(CG.db.minimapAngle)
@@ -69,7 +93,17 @@ function M.Refresh()
     if not CG.db then return end
     if not M.button then M.Create() end
     if not M.button then return end
-    M.button:SetShown(CG.db.minimapVisible ~= false)
+    local wanted = CG.db.minimapVisible ~= false
+    -- Never call SetShown repeatedly: EllesmereUI hides/minimizes collected
+    -- buttons and tracks Show/Hide. Reasserting Show every tick breaks its flyout.
+    if M.lastRequestedVisibility ~= wanted then
+        M.lastRequestedVisibility = wanted
+        M.button:SetShown(wanted)
+    end
+    if M.IsExternallyManaged() or isOwnedByOtherFrame() then
+        M.lastWidth, M.lastHeight, M.lastShape = nil, nil, nil
+        return
+    end
     local width, height, shape = geometry()
     if width ~= M.lastWidth or height ~= M.lastHeight or shape ~= M.lastShape then
         M.Reposition()
@@ -78,6 +112,7 @@ end
 
 function M.UpdateDrag()
     if not M.button or not CG.db or not Minimap then return end
+    if M.IsExternallyManaged() or isOwnedByOtherFrame() then return end
     if type(InCombatLockdown) == "function" and InCombatLockdown() then return end
     if type(GetCursorPosition) ~= "function" then return end
     local scale = Minimap:GetEffectiveScale()
@@ -113,6 +148,8 @@ function M.Create()
     coin:SetTexture("Interface\\Icons\\INV_Misc_Coin_01")
     coin:SetSize(22, 22)
     coin:SetPoint("CENTER", button, "CENTER", -1, 1)
+    -- Gives EllesmereUI and other collectors an unambiguous primary icon.
+    button.icon = coin
 
     local shield = button:CreateTexture(nil, "OVERLAY")
     shield:SetTexture("Interface\\Icons\\INV_Shield_06")
@@ -127,6 +164,7 @@ function M.Create()
         end
     end)
     button:SetScript("OnDragStart", function(self)
+        if M.IsExternallyManaged() or isOwnedByOtherFrame() then return end
         if type(InCombatLockdown) == "function" and InCombatLockdown() then return end
         self:SetScript("OnUpdate", function() M.UpdateDrag() end)
     end)
@@ -143,7 +181,11 @@ function M.Create()
         GameTooltip:AddLine("Minimum net profit: " .. threshold .. "% above vendor", 0.9, 0.9, 0.8)
         GameTooltip:AddLine("Left-click: Toggle panel on AH Sell tab", 0.8, 0.9, 0.8)
         GameTooltip:AddLine("Right-click: Profit slider on AH Sell tab", 0.8, 0.9, 0.8)
-        GameTooltip:AddLine("Drag: Move along the minimap edge", 0.8, 0.9, 0.8)
+        if M.IsExternallyManaged() or isOwnedByOtherFrame() then
+            GameTooltip:AddLine("Button position managed by EllesmereUI", 0.8, 0.9, 0.8)
+        else
+            GameTooltip:AddLine("Drag: Move along the minimap edge", 0.8, 0.9, 0.8)
+        end
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", function()
