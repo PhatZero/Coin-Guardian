@@ -179,6 +179,7 @@ assert(button.setShownCalls == originalShows + 2, "No repeated show calls")
 -- Switching the Ellesmere minimap module OFF restores Coin Guardian behavior.
 EllesmereUI._ModuleNS.EllesmereUIMinimap._internals.EBS.db.profile.minimap.enabled = false
 assert(not M.IsExternallyManaged(), "Disabled manager must yield control")
+shape = "ROUND"
 M.Refresh()
 assert(button.repositionCalls == acquiredPoints + 1,
     "Standalone round-rim placement must resume after manager is disabled")
