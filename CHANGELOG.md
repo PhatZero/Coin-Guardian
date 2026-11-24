@@ -43,3 +43,14 @@ This build is for local in-game QA only.
 - Expanded mock QA to test tab transitions, normal and commodity selling, and original list-anchor restoration.
 
 No public GitHub release or CurseForge publication.
+
+## 0.1.3-alpha (local QA only)
+
+- Fixed compatibility with EllesmereUI's minimap addon-button flyout.
+- Coin Guardian no longer calls `SetShown` every refresh, preventing the flyout from repeatedly losing ownership of the icon.
+- Once EllesmereUI takes control of Coin Guardian's button, Coin Guardian stops overriding the flyout's position, size and drag behavior.
+- Normal round-minimap edge positioning and dragging are retained when EllesmereUI is not managing the button.
+- Added a consistent coin icon reference for addon button collectors, and a tooltip that explains which UI controls the position.
+- Added regression tests for flyout reparenting, ungrouped buttons, manager activation, repeat visibility calls, explicit hide/show, and minimap resizing.
+
+**Local testing only.** No GitHub release or CurseForge upload.
