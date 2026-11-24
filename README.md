@@ -72,3 +72,13 @@ Coin Guardian no longer creates a separate floating panel. Visit an auctioneer a
 - Minimap left-click toggles the footer while on Sell. Minimap right-click restores the footer/settings there.
 - Away from the Auction House, the minimap button and `/cg` show a chat hint instead of opening a new window.
 - This is still **local QA only**. No tag, release, or CurseForge upload has been made.
+
+## 0.1.3-alpha: EllesmereUI minimap compatibility
+
+If you use **EllesmereUI's minimap addon flyout**, it now controls the position and appearance of Coin Guardian's minimap button. Coin Guardian does not fight the flyout by repeatedly showing the button or snapping it back to the map rim. In EllesmereUI, use its addon-button grouping or ungrouping controls to choose where the Coin Guardian icon appears.
+
+Without an active EllesmereUI minimap manager, Coin Guardian keeps its normal gold coin/shield button on the **outer rim of the round minimap**, with draggable saved angle.
+
+The existing `/cg minimap show`, `hide`, and `reset` commands still work; `reset` changes Coin Guardian's standalone position and will not override EllesmereUI's managed row or flyout. The profit calculator remains inside the Auction House **Sell tab**.
+
+**Local QA:** Test entering the world, opening/closing EllesmereUI's addon flyout, navigating the AH, dragging in standalone mode, reloading, and disabling EllesmereUI's minimap module.
