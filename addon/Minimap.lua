@@ -78,8 +78,11 @@ function M.OffsetForAngle(angle, width, height, shape)
     return dx * radiusX, dy * radiusY
 end
 
-function M.Reposition()
-    if not M.button or not CG.db or M.IsExternallyManaged() or isOwnedByOtherFrame() then return end
+function M.Reposition(initialPlacement)
+    if not M.button or not CG.db or isOwnedByOtherFrame() then return end
+    -- Place once so an icon created after Ellesmere's latest discovery pass is
+    -- still visible until the flyout picks it up. Later the manager owns layout.
+    if M.IsExternallyManaged() and not initialPlacement then return end
     local width, height, shape = geometry()
     if not width then return end
     local angle = normalizeAngle(CG.db.minimapAngle)
@@ -192,6 +195,6 @@ function M.Create()
         if GameTooltip then GameTooltip:Hide() end
     end)
     M.button = button
-    M.Reposition()
+    M.Reposition(true)
     M.Refresh()
 end
