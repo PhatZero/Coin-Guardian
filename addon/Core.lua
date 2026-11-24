@@ -1,5 +1,5 @@
 local addonName, CG = ...
-CG.version = "0.1.2-alpha"
+CG.version = "0.1.3-alpha"
 CG.defaultMargin = 50
 CG.manualOpen = false
 
