@@ -195,6 +195,7 @@ function M.Create()
         if GameTooltip then GameTooltip:Hide() end
     end)
     M.button = button
+    M.lastRequestedVisibility = nil
     M.Reposition(true)
     M.Refresh()
 end
