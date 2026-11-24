@@ -1,5 +1,5 @@
 -- WoW Forever minimap-edge behavior regression tests (Lua 5.1).
-local CG = { version = "0.1.1-alpha", db = { minimapAngle = 225, minimapVisible = true } }
+local CG = { version = "0.1.3-alpha", db = { minimapAngle = 225, minimapVisible = true } }
 local width, height = 140, 140
 local shape = "ROUND"
 local cursorX, cursorY = 500, 500
@@ -24,7 +24,7 @@ function CreateFrame(kind, name, parent)
     assert(kind == "Button")
     assert(name == "CoinGuardianMinimapButton")
     assert(parent == Minimap)
-    local button = { scripts = {}, shown = true, position = {} }
+    local button = { scripts = {}, shown = true, position = {}, parent = parent, setShownCalls = 0, repositionCalls = 0 }
     function button:SetSize(w, h) self.width, self.height = w, h end
     function button:SetFrameStrata(value) self.strata = value end
     function button:SetFrameLevel(value) self.level = value end
@@ -39,11 +39,13 @@ function CreateFrame(kind, name, parent)
         return texture
     end
     function button:SetScript(event, fn) self.scripts[event] = fn end
+    function button:GetParent() return self.parent end
     function button:ClearAllPoints() self.position = {} end
     function button:SetPoint(point, relative, relativePoint, x, y)
+        self.repositionCalls = self.repositionCalls + 1
         self.position = { point, relative, relativePoint, x, y }
     end
-    function button:SetShown(shown) self.shown = shown end
+    function button:SetShown(shown) self.shown = shown; self.setShownCalls = self.setShownCalls + 1 end
     created = button
     return button
 end
@@ -67,6 +69,7 @@ end
 M.Create()
 assert(M.button == created, "Minimap button not created")
 assert(created.width == 32 and created.height == 32, "Expected a compact minimap icon")
+assert(created.icon ~= nil, "External managers should find the primary coin icon")
 assert(CG.db.minimapAngle == 225, "Existing angle not preserved")
 local x, y = created.position[4], created.position[5]
 near(math.sqrt(x*x + y*y), 77, 0.01, "Round minimap radius")
@@ -117,4 +120,82 @@ M.Create()
 assert(CG.db.minimapAngle == savedAngle, "Reload should keep selected angle")
 near(M.button.position[4], 97, 0.01, "Reload preserves square-rim x")
 near(M.button.position[5], 97, 0.01, "Reload preserves square-rim y")
-print("PASS: round and square edge anchoring, drag, UI scale geometry, saves, clicks, tooltip")
+-- A flyout manager can now claim the same button. Coin Guardian must NEVER
+-- force visibility or anchor changes back to Minimap while EUI is managing it.
+local button = M.button
+local originalShows = button.setShownCalls
+for i = 1, 6 do M.Refresh() end
+assert(button.setShownCalls == originalShows,
+    "Periodic refresh must not call SetShown after initialization")
+
+EllesmereUI = {
+    _ModuleNS = {
+        EllesmereUIMinimap = {
+            _internals = { EBS = { db = { profile = { minimap = { enabled = true } } } } },
+        },
+    },
+}
+assert(M.IsExternallyManaged(), "Expected EllesmereUI minimap detection")
+
+local foreignPanel = {}
+button.parent = foreignPanel
+button.position = { "TOPLEFT", foreignPanel, "TOPLEFT", 13, -23 }
+local acquiredPoints = button.repositionCalls
+width, height = 280, 280
+M.Refresh()
+assert(button.repositionCalls == acquiredPoints, "Don't move a button in Ellesmere flyout")
+assert(button.position[2] == foreignPanel, "Don't steal icon back to Minimap")
+assert(button.setShownCalls == originalShows, "Don't force-show flyout-managed buttons")
+button.scripts.OnDragStart(button)
+assert(button.scripts.OnUpdate == nil, "Disable native drag while flyout owns button")
+button.scripts.OnDragStop(button)
+assert(button.repositionCalls == acquiredPoints, "Stopping flyout drag must not reposition")
+
+-- Even an Ellesmere 'ungrouped' button stays on Minimap, but its row layout is
+-- controlled by Ellesmere, not by Coin Guardian's own rim geometry.
+button.parent = Minimap
+button.position = { "TOPRIGHT", Minimap, "TOPRIGHT", -19, -4 }
+M.Refresh()
+assert(button.repositionCalls == acquiredPoints, "Ellesmere row anchor must remain untouched")
+button.scripts.OnEnter(button)
+assert(table.concat(GameTooltip.lines, " "):find("EllesmereUI"), "Tooltip must explain ownership")
+button.scripts.OnDragStart(button)
+assert(button.scripts.OnUpdate == nil, "Native drag must not conflict with row drag")
+
+-- Explicit Coin Guardian preferences still work, but only on state change.
+CG.db.minimapVisible = false
+M.Refresh()
+assert(button.shown == false)
+assert(button.setShownCalls == originalShows + 1)
+M.Refresh()
+assert(button.setShownCalls == originalShows + 1, "No repeated hide calls")
+CG.db.minimapVisible = true
+M.Refresh()
+assert(button.shown == true)
+assert(button.setShownCalls == originalShows + 2)
+M.Refresh()
+assert(button.setShownCalls == originalShows + 2, "No repeated show calls")
+
+-- Switching the Ellesmere minimap module OFF restores Coin Guardian behavior.
+EllesmereUI._ModuleNS.EllesmereUIMinimap._internals.EBS.db.profile.minimap.enabled = false
+assert(not M.IsExternallyManaged(), "Disabled manager must yield control")
+M.Refresh()
+assert(button.repositionCalls == acquiredPoints + 1,
+    "Standalone round-rim placement must resume after manager is disabled")
+near(math.sqrt(button.position[4]^2 + button.position[5]^2), 147, .01,
+    "Rim radius after disable")
+
+-- On login with EUI already loaded, the button gets one sensible rim position
+-- until Ellesmere discovers it. Subsequent EUI layout remains authoritative.
+EllesmereUI._ModuleNS.EllesmereUIMinimap._internals.EBS.db.profile.minimap.enabled = true
+M.button = nil
+M.lastRequestedVisibility = nil
+M.Create()
+assert(M.button.position[2] == Minimap, "New icons must have initial position")
+local euiButton = M.button
+local euiPositionCount = euiButton.repositionCalls
+M.Refresh()
+assert(euiButton.repositionCalls == euiPositionCount,
+    "Do not reposition after initial Ellesmere handoff")
+print("PASS: minimap rim + EllesmereUI flyout compatibility, drag, resize, visibility and state")
+
