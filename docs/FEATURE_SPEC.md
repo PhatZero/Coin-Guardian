@@ -73,3 +73,9 @@ The button opens the existing profit panel and slider; it does not post auctions
 The first standalone floating panel did not meet the intended UX. The revised design creates a 180px footer as a direct child of `AuctionHouseFrame`, anchored to the bottom-right space beside the native Sell form. It saves all original `ItemSellList` anchor points, shortens the results list to make room, then restores those anchors when the footer hides, the player changes tabs, or the Auction House closes. The commodity list follows the resized item list's anchors. The original Blizzard Post button is untouched.
 
 The profit breakdown and slider are never shown in a separate window, including when a player clicks the minimap icon away from an auctioneer. In-game QA should confirm the footer has adequate room at different UI scales and does not obscure the item/commodity search list or buttons.
+
+## EllesmereUI addon flyout compatibility (0.1.3-alpha)
+
+EllesmereUIMinimap collects named button children of `Minimap`, hides grouped buttons, and reparents the buttons into its flyout. It also positions ungrouped buttons on a managed row. Coin Guardian must yield ownership when the active Ellesmere minimap module is detected. Position only once when first creating the icon, then never force its anchor or call `SetShown` repeatedly. Do not call the minimap drag updater if a flyout has changed the button's parent or Ellesmere is active. Respect explicit Coin Guardian show/hide preferences, but only on preference transitions. Verify that button collectors can identify `button.icon`.
+
+Native rim dragging remains supported only when no competing manager owns the minimap button. In-game UI verification with EllesmereUI remains required before considering this compatibility issue closed.
